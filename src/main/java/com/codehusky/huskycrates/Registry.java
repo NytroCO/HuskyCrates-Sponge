@@ -6,7 +6,7 @@ import com.codehusky.huskycrates.crate.physical.PhysicalCrate;
 import com.codehusky.huskycrates.crate.virtual.Crate;
 import com.codehusky.huskycrates.crate.virtual.Key;
 import com.codehusky.huskycrates.crate.virtual.effects.Effect;
-import com.codehusky.huskycrates.exception.DoubleRegistrationError;
+import com.codehusky.huskycrates.exception.DoubleRegistrationException;
 import org.spongepowered.api.Sponge;
 import org.spongepowered.api.block.BlockTypes;
 import org.spongepowered.api.entity.living.player.Player;
@@ -22,49 +22,49 @@ import java.util.*;
  * This class is intended to contain Crate and Keys, Crate locations w/ virtual,
  */
 public class Registry {
-    private HashMap<String, Key> keys = new HashMap<>();
-    private HashMap<String, Crate> crates = new HashMap<>();
+    private final HashMap<String, Key> keys = new HashMap<>();
+    private final HashMap<String, Crate> crates = new HashMap<>();
 
-    private HashMap<UUID, HashMap<String, Integer>> virtualKeys = new HashMap<>();
-    private HashMap<UUID, HashSet<String>> dirtyVirtualKeys = new HashMap<>();
+    private final HashMap<UUID, HashMap<String, Integer>> virtualKeys = new HashMap<>();
+    private final HashMap<UUID, HashSet<String>> dirtyVirtualKeys = new HashMap<>();
 
-    private HashMap<UUID, Map.Entry<String,Integer>> keysInCirculation = new HashMap<>();
-    private HashSet<UUID> dirtyKeysInCirculation = new HashSet<>();
+    private final HashMap<UUID, Map.Entry<String, Integer>> keysInCirculation = new HashMap<>();
+    private final HashSet<UUID> dirtyKeysInCirculation = new HashSet<>();
 
-    private HashMap<UUID, HashMap<String, Long>> lastCrateUse = new HashMap<>();
-    private HashMap<UUID, HashSet<String>> dirtyLastCrateUse = new HashMap<>();
+    private final HashMap<UUID, HashMap<String, Long>> lastCrateUse = new HashMap<>();
+    private final HashMap<UUID, HashSet<String>> dirtyLastCrateUse = new HashMap<>();
 
-    private HashMap<Location<World>, PhysicalCrate> physicalCrates = new HashMap<>();
+    private final HashMap<Location<World>, PhysicalCrate> physicalCrates = new HashMap<>();
 
-    private HashSet<Location<World>> dirtyPhysicalCrates = new HashSet<>();
+    private final HashSet<Location<World>> dirtyPhysicalCrates = new HashSet<>();
 
-    private ArrayList<EffectInstance> effects = new ArrayList<>();
+    private final ArrayList<EffectInstance> effects = new ArrayList<>();
 
     public String stats() {
         int items = 0;
-        for(Crate crate: crates.values()){
-            items+= crate.getSlots().size();
+        for (Crate crate : crates.values()) {
+            items += crate.getSlots().size();
         }
         return "keys: " + keys.size() + "\ncrates: " + crates.size() + "\nslot sum: " + items + "\nphysicalCrates: " + physicalCrates.size() + "\nrunningEffects: " + effects.size();
     }
 
-    public Key getKey(String id){
+    public Key getKey(String id) {
         //handling local keys.
-        if(!isKey(id)) return null;
+        if (!isKey(id)) return null;
 
-        if(id.indexOf("LOCALKEY_") == 0){
-            return crates.get(id.replace("LOCALKEY_","")).getLocalKey();
+        if (id.indexOf("LOCALKEY_") == 0) {
+            return crates.get(id.replace("LOCALKEY_", "")).getLocalKey();
         }
         return keys.get(id);
     }
 
-    public Crate getCrate(String id){
-        if(!isCrate(id)) return null;
+    public Crate getCrate(String id) {
+        if (!isCrate(id)) return null;
         return crates.get(id);
     }
 
-    public PhysicalCrate getPhysicalCrate(Location<World> location){
-        if(!isPhysicalCrate(location)) return null;
+    public PhysicalCrate getPhysicalCrate(Location<World> location) {
+        if (!isPhysicalCrate(location)) return null;
         return physicalCrates.get(location);
     }
 
@@ -72,33 +72,33 @@ public class Registry {
         return physicalCrates;
     }
 
-    public boolean isSecureKey(String keyID, UUID uuid){
+    public boolean isSecureKey(String keyID, UUID uuid) {
         return keysInCirculation.containsKey(uuid) && keysInCirculation.get(uuid).getKey().equals(keyID) && keysInCirculation.get(uuid).getValue() > 0;
     }
 
-    public UUID generateSecureKey(String keyID){
-        return this.generateSecureKey(keyID,1);
+    public UUID generateSecureKey(String keyID) {
+        return this.generateSecureKey(keyID, 1);
     }
 
-    public UUID generateSecureKey(String keyID, int amount){
-        if(!isKey(keyID)) return null;
+    public UUID generateSecureKey(String keyID, int amount) {
+        if (!isKey(keyID)) return null;
 
         UUID uuid = UUID.randomUUID();
-        keysInCirculation.put(uuid,new AbstractMap.SimpleEntry<>(keyID,amount));
+        keysInCirculation.put(uuid, new AbstractMap.SimpleEntry<>(keyID, amount));
         dirtyKeysInCirculation.add(uuid);
         return uuid;
     }
 
-    public boolean consumeSecureKey(String keyID, UUID keyUUID, int amount){
-        if(!isKey(keyID)) return false;
+    public boolean consumeSecureKey(String keyID, UUID keyUUID, int amount) {
+        if (!isKey(keyID)) return false;
 
-        if(keysInCirculation.containsKey(keyUUID)){
-            if(keysInCirculation.get(keyUUID).getKey().equals(keyID)){
-                if(keysInCirculation.get(keyUUID).getValue() >= amount){
-                    if(keysInCirculation.get(keyUUID).getValue() == amount){
+        if (keysInCirculation.containsKey(keyUUID)) {
+            if (keysInCirculation.get(keyUUID).getKey().equals(keyID)) {
+                if (keysInCirculation.get(keyUUID).getValue() >= amount) {
+                    if (keysInCirculation.get(keyUUID).getValue() == amount) {
                         keysInCirculation.remove(keyUUID);
-                    }else {
-                        keysInCirculation.put(keyUUID,new AbstractMap.SimpleEntry<>(keyID, keysInCirculation.get(keyUUID).getValue() - amount));
+                    } else {
+                        keysInCirculation.put(keyUUID, new AbstractMap.SimpleEntry<>(keyID, keysInCirculation.get(keyUUID).getValue() - amount));
                     }
 
                     dirtyKeysInCirculation.add(keyUUID);
@@ -109,35 +109,35 @@ public class Registry {
         return false;
     }
 
-    public void runEffect(Effect effect, Location<World> location){
-        effects.add(new EffectInstance(effect,location));
+    public void runEffect(Effect effect, Location<World> location) {
+        effects.add(new EffectInstance(effect, location));
     }
 
-    public void runClientEffect(Effect effect, Location<World> location, Player player){
-        effects.add(new EffectInstance(effect,location,player));
+    public void runClientEffect(Effect effect, Location<World> location, Player player) {
+        effects.add(new EffectInstance(effect, location, player));
     }
 
     public ArrayList<EffectInstance> getEffects() {
         return effects;
     }
 
-    public void removeEffect(EffectInstance instance){
+    public void removeEffect(EffectInstance instance) {
         effects.remove(instance);
     }
 
-    public boolean isKey(String id){
-        if(id.indexOf("LOCALKEY_") == 0){
-            if(crates.containsKey(id.replace("LOCALKEY_","")))
-                return crates.get(id.replace("LOCALKEY_","")).hasLocalKey();
+    public boolean isKey(String id) {
+        if (id.indexOf("LOCALKEY_") == 0) {
+            if (crates.containsKey(id.replace("LOCALKEY_", "")))
+                return crates.get(id.replace("LOCALKEY_", "")).hasLocalKey();
         }
         return keys.containsKey(id);
     }
 
-    public boolean isCrate(String id){
+    public boolean isCrate(String id) {
         return crates.containsKey(id);
     }
 
-    public boolean isPhysicalCrate(Location<World> location){
+    public boolean isPhysicalCrate(Location<World> location) {
         return physicalCrates.containsKey(location);
     }
 
@@ -149,9 +149,9 @@ public class Registry {
 
     public HashMap<String, Key> getLocalKeys() {
         HashMap<String, Key> lkeys = new HashMap<>();
-        for(Crate crate : crates.values()){
-            if(crate.hasLocalKey()){
-                lkeys.put(crate.getLocalKey().getId(),crate.getLocalKey());
+        for (Crate crate : crates.values()) {
+            if (crate.hasLocalKey()) {
+                lkeys.put(crate.getLocalKey().getId(), crate.getLocalKey());
             }
         }
         return lkeys;
@@ -165,106 +165,110 @@ public class Registry {
         return crates;
     }
 
-    public void registerCrate(Crate crate){
-        if(isCrate(crate.getId())) throw new DoubleRegistrationError("Crate with id " + crate.getId() + " already is registered");
-        crates.put(crate.getId(),crate);
+    public void registerCrate(Crate crate) {
+        if (isCrate(crate.getId()))
+            throw new DoubleRegistrationException("Crate with id " + crate.getId() + " already is registered");
+        crates.put(crate.getId(), crate);
     }
 
-    public void registerKey(Key key){
-        if(isKey(key.getId())) throw new DoubleRegistrationError("Key with id " + key.getId() + " already is registered");
-        keys.put(key.getId(),key);
+    public void registerKey(Key key) {
+        if (isKey(key.getId()))
+            throw new DoubleRegistrationException("Key with id " + key.getId() + " already is registered");
+        keys.put(key.getId(), key);
     }
 
-    public void registerPhysicalCrate(PhysicalCrate physicalCrate){
-        if(physicalCrates.containsKey(physicalCrate.getLocation())) throw new DoubleRegistrationError("Crate is already located at " + physicalCrate.getLocation().toString());
-        physicalCrates.put(physicalCrate.getLocation(),physicalCrate);
+    public void registerPhysicalCrate(PhysicalCrate physicalCrate) {
+        if (physicalCrates.containsKey(physicalCrate.getLocation()))
+            throw new DoubleRegistrationException("Crate is already located at " + physicalCrate.getLocation().toString());
+        physicalCrates.put(physicalCrate.getLocation(), physicalCrate);
         dirtyPhysicalCrates.add(physicalCrate.getLocation());
     }
 
-    public void unregisterPhysicalCrate(Location<World> location){
+    public void unregisterPhysicalCrate(Location<World> location) {
         physicalCrates.remove(location);
         dirtyPhysicalCrates.add(location);
     }
 
-    public Long getLastUse(String crateID, UUID playerUUID){
-       if(lastCrateUse.containsKey(playerUUID)){
-           if(lastCrateUse.get(playerUUID).containsKey(crateID)){
-               return lastCrateUse.get(playerUUID).get(crateID);
-           }
-       }
-       return null;
+    public Long getLastUse(String crateID, UUID playerUUID) {
+        if (lastCrateUse.containsKey(playerUUID)) {
+            if (lastCrateUse.get(playerUUID).containsKey(crateID)) {
+                return lastCrateUse.get(playerUUID).get(crateID);
+            }
+        }
+        return null;
     }
 
-    public boolean addVirtualKeys(UUID playerUUID, String keyID, Integer amount){
-        if(isKey(keyID)){
-            HashMap<String, Integer> balances = virtualKeys.getOrDefault(playerUUID,new HashMap<>());
-            balances.put(keyID,(balances.containsKey(keyID))?amount + balances.get(keyID):amount);
-            virtualKeys.put(playerUUID,balances);
+    public boolean addVirtualKeys(UUID playerUUID, String keyID, Integer amount) {
+        if (isKey(keyID)) {
+            HashMap<String, Integer> balances = virtualKeys.getOrDefault(playerUUID, new HashMap<>());
+            balances.put(keyID, (balances.containsKey(keyID)) ? amount + balances.get(keyID) : amount);
+            virtualKeys.put(playerUUID, balances);
 
-            HashSet<String> ud = dirtyVirtualKeys.getOrDefault(playerUUID,new HashSet<>());
+            HashSet<String> ud = dirtyVirtualKeys.getOrDefault(playerUUID, new HashSet<>());
             ud.add(keyID);
-            dirtyVirtualKeys.put(playerUUID,ud);
+            dirtyVirtualKeys.put(playerUUID, ud);
             return true;
         }
         return false;
     }
 
-    public boolean removeVirtualKeys(UUID playerUUID, String keyID, Integer amount){
-        return addVirtualKeys(playerUUID,keyID,-amount);
+    public boolean removeVirtualKeys(UUID playerUUID, String keyID, Integer amount) {
+        return addVirtualKeys(playerUUID, keyID, -amount);
     }
 
-    public boolean setVirtualKeys(UUID playerUUID, String keyID, Integer amount){
-        if(isKey(keyID)){
-            HashMap<String, Integer> balances = virtualKeys.getOrDefault(playerUUID,new HashMap<>());
-            balances.put(keyID,amount);
-            virtualKeys.put(playerUUID,balances);
+    public boolean setVirtualKeys(UUID playerUUID, String keyID, Integer amount) {
+        if (isKey(keyID)) {
+            HashMap<String, Integer> balances = virtualKeys.getOrDefault(playerUUID, new HashMap<>());
+            balances.put(keyID, amount);
+            virtualKeys.put(playerUUID, balances);
 
-            HashSet<String> ud = dirtyVirtualKeys.getOrDefault(playerUUID,new HashSet<>());
+            HashSet<String> ud = dirtyVirtualKeys.getOrDefault(playerUUID, new HashSet<>());
             ud.add(keyID);
-            dirtyVirtualKeys.put(playerUUID,ud);
+            dirtyVirtualKeys.put(playerUUID, ud);
             return true;
         }
         return false;
     }
 
-    public Integer getVirtualKeyBalance(UUID playerUUID, String keyID){
-        if(virtualKeys.containsKey(playerUUID)){
-            if(virtualKeys.get(playerUUID).containsKey(keyID)){
+    public Integer getVirtualKeyBalance(UUID playerUUID, String keyID) {
+        if (virtualKeys.containsKey(playerUUID)) {
+            if (virtualKeys.get(playerUUID).containsKey(keyID)) {
                 return virtualKeys.get(playerUUID).get(keyID);
             }
         }
         return 0;
     }
 
-    public HashMap<String, Integer> getVirtualKeyBalances(UUID playerUUID){
-        if(virtualKeys.containsKey(playerUUID)){
+    public HashMap<String, Integer> getVirtualKeyBalances(UUID playerUUID) {
+        if (virtualKeys.containsKey(playerUUID)) {
             return virtualKeys.get(playerUUID);
         }
         return new HashMap<>();
     }
 
-    public void updateLastUse(String crateID, UUID playerUUID){
+    public void updateLastUse(String crateID, UUID playerUUID) {
         HashMap<String, Long> userData = new HashMap<>();
-        if(lastCrateUse.containsKey(playerUUID)){
+        if (lastCrateUse.containsKey(playerUUID)) {
             userData = lastCrateUse.get(playerUUID);
         }
-        userData.put(crateID,System.currentTimeMillis());
-        lastCrateUse.put(playerUUID,userData);
+        userData.put(crateID, System.currentTimeMillis());
+        lastCrateUse.put(playerUUID, userData);
         HashSet<String> modified = dirtyLastCrateUse.get(playerUUID);
-        if(modified == null) modified = new HashSet<>();
+        if (modified == null) modified = new HashSet<>();
         modified.add(crateID);
-        dirtyLastCrateUse.put(playerUUID,modified);
+        dirtyLastCrateUse.put(playerUUID, modified);
     }
 
     /**
      * methods for use in database management
-     * @return
+     *
+     * @return dirtyPhysicalCrates
      */
     public HashSet<Location<World>> getDirtyPhysicalCrates() {
         return dirtyPhysicalCrates;
     }
 
-    public boolean cleanPhysicalCrate(Location<World> location){
+    public boolean cleanPhysicalCrate(Location<World> location) {
         return dirtyPhysicalCrates.remove(location);
     }
 
@@ -275,12 +279,10 @@ public class Registry {
         dirtyLastCrateUse.clear();
     }
 
-    public void clearRegistry(){
+    public void clearRegistry() {
         clearConfigRegistry();
         clearDBRegistry();
-        effects.forEach(effect -> {
-            effect.resetEffect();
-        });
+        effects.forEach(EffectInstance::resetEffect);
         effects.clear();
     }
 
@@ -290,9 +292,7 @@ public class Registry {
     }
 
     public void clearDBRegistry() {
-        physicalCrates.forEach((location, physicalCrate) -> {
-            physicalCrate.cleanup();
-        });
+        physicalCrates.forEach((location, physicalCrate) -> physicalCrate.cleanup());
         physicalCrates.clear();
         dirtyPhysicalCrates.clear();
 
@@ -307,44 +307,42 @@ public class Registry {
     }
 
     public void postInjection() {
-        crates.forEach((id, crate) -> {
-            crate.postInjectionChecks();
-        });
+        crates.forEach((id, crate) -> crate.postInjectionChecks());
     }
 
     private Connection getConnection() {
 
-        DataSource dbSource = null;
+        DataSource dbSource;
         try {
             dbSource = Sponge.getServiceManager().provide(SqlService.class).get().getDataSource("jdbc:h2:" + HuskyCrates.instance.configDir.resolve("data"));
             Connection connection = dbSource.getConnection();
-            boolean cP = connection.getMetaData().getTables(null,null,"CRATELOCATIONS",null).next();
-            boolean cKU = connection.getMetaData().getTables(null,null,"VALIDKEYS",null).next();
-            boolean kB = connection.getMetaData().getTables(null,null,"KEYBALANCES",null).next();
-            boolean cD = connection.getMetaData().getTables(null,null,"LASTUSED",null).next();
+            boolean cP = connection.getMetaData().getTables(null, null, "CRATELOCATIONS", null).next();
+            boolean cKU = connection.getMetaData().getTables(null, null, "VALIDKEYS", null).next();
+            boolean kB = connection.getMetaData().getTables(null, null, "KEYBALANCES", null).next();
+            boolean cD = connection.getMetaData().getTables(null, null, "LASTUSED", null).next();
             //TODO: TABLE PREFIX
-            if(!cP){
+            if (!cP) {
                 connection.prepareStatement("CREATE TABLE CRATELOCATIONS (ID INTEGER NOT NULL AUTO_INCREMENT, X DOUBLE, Y DOUBLE, Z DOUBLE, worldUUID CHARACTER, isEntityCrate BOOLEAN, crateID CHARACTER,  PRIMARY KEY(ID))").executeUpdate();
             }
-            if(!cKU){
+            if (!cKU) {
                 connection.prepareStatement("CREATE TABLE VALIDKEYS (keyUUID CHARACTER, crateID CHARACTER, amount INTEGER )").executeUpdate();
             }
-            if(!kB){
+            if (!kB) {
                 connection.prepareStatement("CREATE TABLE KEYBALANCES (userUUID CHARACTER, keyID CHARACTER, amount INTEGER)").executeUpdate();
             }
-            if(!cD){
+            if (!cD) {
                 connection.prepareStatement("CREATE TABLE LASTUSED (userUUID CHARACTER, crateID CHARACTER, lastUsed BIGINT)").executeUpdate();
             }
-            return  connection;
+            return connection;
         } catch (SQLException e) {
             e.printStackTrace();
             return null;
         }
     }
 
-    public void loadFromDatabase(){
+    public void loadFromDatabase() {
         Connection connection = getConnection();
-        if(connection == null) {
+        if (connection == null) {
             HuskyCrates.instance.logger.error("SQL LOAD FAILURE");
             return;
         }
@@ -353,7 +351,7 @@ public class Registry {
             HuskyCrates.registry.clearDBRegistry();
 
             ResultSet physicalCrates = connection.prepareStatement("SELECT * FROM CRATELOCATIONS").executeQuery();
-            while(physicalCrates.next()){
+            while (physicalCrates.next()) {
                 //HuskyCrates.instance.logger.info("cratePositions thing!");
                 int id = physicalCrates.getInt("ID");
                 double x = physicalCrates.getDouble("X");
@@ -364,21 +362,21 @@ public class Registry {
                 String crateID = physicalCrates.getString("crateID");
 
 
-                if(Sponge.getServer().getWorld(worldUUID).isPresent() && this.isCrate(crateID)){ //VALID WORLD
+                if (Sponge.getServer().getWorld(worldUUID).isPresent() && this.isCrate(crateID)) { //VALID WORLD
                     World world = Sponge.getServer().getWorld(worldUUID).get();
-                    Location<World> loco = new Location<>(world,x,y,z);
-                    if(loco.getBlock().getType().equals(BlockTypes.AIR)){
+                    Location<World> loco = new Location<>(world, x, y, z);
+                    if (loco.getBlock().getType().equals(BlockTypes.AIR)) {
                         this.dirtyPhysicalCrates.add(loco);
                         HuskyCrates.instance.logger.warn("CrateLocation #" + id + " provides a location where there is not a block. Flagging for removal.");
                         HologramInstance.cleanup(loco);
-                    }else {
+                    } else {
                         this.registerPhysicalCrate(new PhysicalCrate(loco, crateID, entityCrate));
                         HuskyCrates.instance.logger.info("Loaded " + crateID + " @ " + x + "," + y + "," + z + ((entityCrate) ? " (ENTITY CRATE)" : ""));
                     }
-                }else{
-                    if(!this.isCrate(crateID) && Sponge.getServer().getWorld(worldUUID).isPresent()){
+                } else {
+                    if (!this.isCrate(crateID) && Sponge.getServer().getWorld(worldUUID).isPresent()) {
                         World world = Sponge.getServer().getWorld(worldUUID).get();
-                        Location<World> loco = new Location<>(world,x,y,z);
+                        Location<World> loco = new Location<>(world, x, y, z);
                         HologramInstance.cleanup(loco);
                     }
                     HuskyCrates.instance.logger.warn("CrateLocation #" + id + " provides an invalid world UUID or invalid crate ID. Removing from table.");
@@ -391,14 +389,14 @@ public class Registry {
 
             //TODO: last used
             ResultSet crateKeyUUIDs = connection.prepareStatement("SELECT * FROM VALIDKEYS").executeQuery();
-            while(crateKeyUUIDs.next()){
+            while (crateKeyUUIDs.next()) {
                 //HuskyCrates.instance.logger.info("crateKeyUUIDs thing!");
                 UUID keyUUID = UUID.fromString(crateKeyUUIDs.getString("keyUUID"));
                 String crateID = crateKeyUUIDs.getString("crateID");
                 int amount = crateKeyUUIDs.getInt("amount");
-                if(this.isCrate(crateID) || this.isKey(crateID)){
-                    this.keysInCirculation.put(keyUUID,new AbstractMap.SimpleEntry<>(crateID,amount));
-                }else{
+                if (this.isCrate(crateID) || this.isKey(crateID)) {
+                    this.keysInCirculation.put(keyUUID, new AbstractMap.SimpleEntry<>(crateID, amount));
+                } else {
                     HuskyCrates.instance.logger.warn("ValidKeys " + keyUUID + " provides an invalid crate ID. Removing from table.");
                     Statement removal = connection.createStatement();
                     removal.executeQuery("SELECT  * FROM VALIDKEYS WHERE KEYUUID='" + keyUUID.toString() + "'");
@@ -410,19 +408,19 @@ public class Registry {
             ResultSet keyBalances = connection.prepareStatement("SELECT * FROM KEYBALANCES").executeQuery();
             //HuskyCrates.instance.logger.info("wasNull: " + keyBalances.wasNull());
             //HuskyCrates.instance.logger.info("isClosed: " + keyBalances.isClosed());
-            while(keyBalances.next()){
+            while (keyBalances.next()) {
                 //HuskyCrates.instance.logger.info("keyBalances thing!");
                 UUID userUUID = UUID.fromString(keyBalances.getString("userUUID"));
                 String keyID = keyBalances.getString("keyID");
                 int amount = keyBalances.getInt("amount");
-                if(this.isKey(keyID)){
-                    HashMap<String,Integer> t = new HashMap<>();
-                    if(this.virtualKeys.containsKey(userUUID)){
+                if (this.isKey(keyID)) {
+                    HashMap<String, Integer> t = new HashMap<>();
+                    if (this.virtualKeys.containsKey(userUUID)) {
                         t = this.virtualKeys.get(userUUID);
                     }
-                    t.put(keyID,amount);
+                    t.put(keyID, amount);
                     this.virtualKeys.put(userUUID, t);
-                }else{
+                } else {
                     HuskyCrates.instance.logger.warn("A Key Balance for UUID " + userUUID + " provides an invalid key ID. Removing from table.");
                     Statement removal = connection.createStatement();
                     removal.executeQuery("SELECT  * FROM KEYBALANCES WHERE USERUUID='" + userUUID.toString() + "'");
@@ -437,21 +435,21 @@ public class Registry {
             /*
                     TABLE LASTUSED (userUUID CHARACTER, crateID CHARACTER, lastUsed BIGINT)
                      */
-            while(lastUses.next()){
+            while (lastUses.next()) {
                 //HuskyCrates.instance.logger.info("keyBalances thing!");
                 UUID userUUID = UUID.fromString(lastUses.getString("userUUID"));
                 String crateID = lastUses.getString("crateID");
                 long lastUsed = lastUses.getLong("lastUsed");
-                if(this.isCrate(crateID)){
-                    HashMap<String,Long> plu;
-                    if(lastCrateUse.containsKey(userUUID)){
+                if (this.isCrate(crateID)) {
+                    HashMap<String, Long> plu;
+                    if (lastCrateUse.containsKey(userUUID)) {
                         plu = lastCrateUse.get(userUUID);
-                    }else {
+                    } else {
                         plu = new HashMap<>();
                     }
-                    plu.put(crateID,lastUsed);
-                    lastCrateUse.put(userUUID,plu);
-                }else{
+                    plu.put(crateID, lastUsed);
+                    lastCrateUse.put(userUUID, plu);
+                } else {
                     HuskyCrates.instance.logger.warn("KeyBalances for UUID " + userUUID + " provides an invalid crate ID. Removing from table.");
                     Statement removal = connection.createStatement();
                     removal.executeQuery("SELECT  * FROM LASTUSED WHERE userUUID='" + userUUID.toString() + "' AND crateID='" + crateID + "'");
@@ -462,29 +460,30 @@ public class Registry {
             connection.close();
             cleanAll();
             HuskyCrates.instance.logger.info("End Database Load.");
-        }catch (SQLException e){
+        } catch (SQLException e) {
             e.printStackTrace();
             HuskyCrates.instance.logger.error("SQL LOAD QUERY FAILURE");
             try {
                 connection.close();
-            } catch (SQLException ignored){}
+            } catch (SQLException ignored) {
+            }
         }
     }
 
     public void pushDirty() {
-        if(dirtyKeysInCirculation.isEmpty() &&
+        if (dirtyKeysInCirculation.isEmpty() &&
                 dirtyVirtualKeys.isEmpty() &&
                 dirtyPhysicalCrates.isEmpty()) return;
 
         Connection connection = getConnection();
-        if(connection == null) {
+        if (connection == null) {
             HuskyCrates.instance.logger.error("SQL DIRTY PUSH FAILURE");
             return;
         }
         HuskyCrates.instance.logger.info("Begin Dirty Data Push...");
         try {
             for (Location<World> dcl : dirtyPhysicalCrates) {
-                if(physicalCrates.containsKey(dcl)){
+                if (physicalCrates.containsKey(dcl)) {
                     //create or update
                     PreparedStatement statement = connection.prepareStatement("SELECT * FROM CRATELOCATIONS WHERE worldUUID = ? AND X = ? AND Y = ? AND Z = ? AND isEntityCrate = ?");
                     statement.setString(1, dcl.getExtent().getUniqueId().toString());
@@ -494,7 +493,7 @@ public class Registry {
                     statement.setBoolean(5, physicalCrates.get(dcl).isEntity());
                     ResultSet results = statement.executeQuery();
                     boolean exists = results.next();
-                    if(!exists){
+                    if (!exists) {
                         PreparedStatement updateStatement = connection.prepareStatement("INSERT INTO CRATELOCATIONS(X,Y,Z,worldUUID,isEntityCrate,crateID) VALUES(?,?,?,?,?,?)");
                         updateStatement.setDouble(1, dcl.getX());
                         updateStatement.setDouble(2, dcl.getY());
@@ -506,95 +505,95 @@ public class Registry {
                         updateStatement.executeUpdate();
 
                     }
-                }else{
+                } else {
                     //remove
                     PreparedStatement delState = connection.prepareStatement("DELETE FROM CRATELOCATIONS WHERE worldUUID = ? AND X = ? AND Y = ? AND Z = ?");
-                    delState.setString(1,dcl.getExtent().getUniqueId().toString());
-                    delState.setDouble(2,dcl.getX());
-                    delState.setDouble(3,dcl.getY());
-                    delState.setDouble(4,dcl.getZ());
+                    delState.setString(1, dcl.getExtent().getUniqueId().toString());
+                    delState.setDouble(2, dcl.getX());
+                    delState.setDouble(3, dcl.getY());
+                    delState.setDouble(4, dcl.getZ());
                     delState.executeUpdate();
                 }
             }
             dirtyPhysicalCrates.clear();
 
-            for(UUID playerUUID: dirtyVirtualKeys.keySet()){
-                for(String keyID : dirtyVirtualKeys.get(playerUUID)){
+            for (UUID playerUUID : dirtyVirtualKeys.keySet()) {
+                for (String keyID : dirtyVirtualKeys.get(playerUUID)) {
                     //create or update
                     PreparedStatement statement = connection.prepareStatement("SELECT * FROM KEYBALANCES WHERE userUUID = ? AND keyID = ?");
-                    statement.setString(1,playerUUID.toString());
-                    statement.setString(2,keyID);
+                    statement.setString(1, playerUUID.toString());
+                    statement.setString(2, keyID);
                     ResultSet results = statement.executeQuery();
                     boolean exists = results.next();
-                    if(!exists){
+                    if (!exists) {
                         PreparedStatement insertStatement = connection.prepareStatement("INSERT INTO KEYBALANCES(userUUID,keyID,amount) VALUES(?,?,?)");
-                        insertStatement.setString(1,playerUUID.toString());
-                        insertStatement.setString(2,keyID);
-                        insertStatement.setInt(3,virtualKeys.get(playerUUID).get(keyID));
+                        insertStatement.setString(1, playerUUID.toString());
+                        insertStatement.setString(2, keyID);
+                        insertStatement.setInt(3, virtualKeys.get(playerUUID).get(keyID));
 
                         insertStatement.executeUpdate();
-                    }else{
+                    } else {
                         PreparedStatement uState = connection.prepareStatement("UPDATE KEYBALANCES SET amount = ? WHERE userUUID = ? AND keyID = ?");
-                        uState.setInt(1,virtualKeys.get(playerUUID).get(keyID));
-                        uState.setString(2,playerUUID.toString());
-                        uState.setString(3,keyID);
+                        uState.setInt(1, virtualKeys.get(playerUUID).get(keyID));
+                        uState.setString(2, playerUUID.toString());
+                        uState.setString(3, keyID);
                         uState.executeUpdate();
                     }
                 }
             }
             dirtyVirtualKeys.clear();
 
-            for(UUID keyUUID: dirtyKeysInCirculation){
-                if(keysInCirculation.containsKey(keyUUID)){
+            for (UUID keyUUID : dirtyKeysInCirculation) {
+                if (keysInCirculation.containsKey(keyUUID)) {
                     //create or update
                     int amount = keysInCirculation.get(keyUUID).getValue();
                     PreparedStatement statement = connection.prepareStatement("SELECT * FROM VALIDKEYS WHERE keyUUID = ?");
-                    statement.setString(1,keyUUID.toString());
+                    statement.setString(1, keyUUID.toString());
                     ResultSet results = statement.executeQuery();
                     boolean exists = results.next();
-                    if(exists){
+                    if (exists) {
                         PreparedStatement uState = connection.prepareStatement("UPDATE VALIDKEYS SET amount = ? WHERE keyUUID = ?");
-                        uState.setInt(1,amount);
-                        uState.setString(2,keyUUID.toString());
+                        uState.setInt(1, amount);
+                        uState.setString(2, keyUUID.toString());
                         uState.executeUpdate();
-                    }else {
+                    } else {
                         PreparedStatement insertStatement = connection.prepareStatement("INSERT INTO VALIDKEYS(keyUUID,crateID,amount) VALUES(?,?,?)");
-                        insertStatement.setString(1,keyUUID.toString());
-                        insertStatement.setString(2,keysInCirculation.get(keyUUID).getKey());
-                        insertStatement.setInt(3,amount);
+                        insertStatement.setString(1, keyUUID.toString());
+                        insertStatement.setString(2, keysInCirculation.get(keyUUID).getKey());
+                        insertStatement.setInt(3, amount);
 
                         insertStatement.executeUpdate();
                     }
-                }else{
+                } else {
                     //removal
                     PreparedStatement delState = connection.prepareStatement("DELETE FROM VALIDKEYS WHERE keyUUID = ?");
-                    delState.setString(1,keyUUID.toString());
+                    delState.setString(1, keyUUID.toString());
                     delState.executeUpdate();
                 }
             }
             dirtyKeysInCirculation.clear();
 
-            for(UUID playerUUID : dirtyLastCrateUse.keySet()){
-                for(String crateID : dirtyLastCrateUse.get(playerUUID)){
+            for (UUID playerUUID : dirtyLastCrateUse.keySet()) {
+                for (String crateID : dirtyLastCrateUse.get(playerUUID)) {
                     /*
                     TABLE LASTUSED (userUUID CHARACTER, crateID CHARACTER, lastUsed BIGINT)
                      */
                     PreparedStatement statement = connection.prepareStatement("SELECT * FROM LASTUSED  WHERE userUUID = ? AND crateID = ?");
-                    statement.setString(1,playerUUID.toString());
-                    statement.setString(2,crateID);
+                    statement.setString(1, playerUUID.toString());
+                    statement.setString(2, crateID);
                     ResultSet results = statement.executeQuery();
                     boolean exists = results.next();
-                    if(exists){
+                    if (exists) {
                         PreparedStatement uState = connection.prepareStatement("UPDATE LASTUSED  SET lastUsed = ? WHERE userUUID = ? AND crateID = ?");
-                        uState.setLong(1,lastCrateUse.get(playerUUID).get(crateID));
-                        uState.setString(2,playerUUID.toString());
-                        uState.setString(3,crateID);
+                        uState.setLong(1, lastCrateUse.get(playerUUID).get(crateID));
+                        uState.setString(2, playerUUID.toString());
+                        uState.setString(3, crateID);
                         uState.executeUpdate();
-                    }else {
+                    } else {
                         PreparedStatement insertStatement = connection.prepareStatement("INSERT INTO LASTUSED(userUUID,crateID,lastUsed) VALUES(?,?,?)");
-                        insertStatement.setString(1,playerUUID.toString());
-                        insertStatement.setString(2,crateID);
-                        insertStatement.setLong(3,lastCrateUse.get(playerUUID).get(crateID));
+                        insertStatement.setString(1, playerUUID.toString());
+                        insertStatement.setString(2, crateID);
+                        insertStatement.setLong(3, lastCrateUse.get(playerUUID).get(crateID));
 
                         insertStatement.executeUpdate();
                     }
@@ -603,12 +602,13 @@ public class Registry {
 
             connection.close();
             HuskyCrates.instance.logger.info("End Dirty Data Push.");
-        }catch (SQLException e){
+        } catch (SQLException e) {
             e.printStackTrace();
             HuskyCrates.instance.logger.error("SQL DIRTY PUSH UPDATE FAILURE");
             try {
                 connection.close();
-            } catch (SQLException ignored){}
+            } catch (SQLException ignored) {
+            }
         }
     }
 }

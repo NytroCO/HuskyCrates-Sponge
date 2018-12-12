@@ -18,25 +18,21 @@ public class Effect {
     private ArrayList<Particle> particles = new ArrayList<>();
     private ArrayList<Sound> sounds = new ArrayList<>();
 
-    private boolean disabled;
+    private final boolean disabled;
 
-    public Effect(ConfigurationNode node){
+    public Effect(ConfigurationNode node) {
         this.disabled = node.getNode("disabled").getBoolean(false);
-        if(this.disabled) return;
+        if (this.disabled) return;
         this.duration = node.getNode("duration").getLong(0);
         this.loop = node.getNode("loop").getBoolean(true);
         this.resetOnTimeout = node.getNode("resetOnTimeout").getBoolean(false);
         this.clientSide = node.getNode("clientSide").getBoolean(false);
-        for(ConfigurationNode particleNode : node.getNode("particles").getChildrenList()){
+        for (ConfigurationNode particleNode : node.getNode("particles").getChildrenList()) {
             particles.add(new Particle(particleNode));
         }
     }
 
-    public int getParticleCount() {
-        return particles.size();
-    }
-
-    public Effect(boolean disabled, long duration, boolean loop, boolean resetOnTimeout, boolean clientSide, ArrayList<Particle> particles){
+    public Effect(boolean disabled, long duration, boolean loop, boolean resetOnTimeout, boolean clientSide, ArrayList<Particle> particles) {
         this.disabled = disabled;
         this.duration = duration;
         this.loop = loop;
@@ -45,40 +41,43 @@ public class Effect {
         this.particles = particles;
     }
 
+    public int getParticleCount() {
+        return particles.size();
+    }
+
     public Effect clone() {
-        return new Effect(this.disabled,this.duration,this.loop,this.resetOnTimeout,this.clientSide,(ArrayList<Particle>)this.particles.clone());
+        return new Effect(this.disabled, this.duration, this.loop, this.resetOnTimeout, this.clientSide, new ArrayList<>(this.particles));
     }
 
     public boolean isDisabled() {
         return disabled;
     }
 
-    public long tick(long ticks, Location<World> location, Player player){
-        if(this.disabled || this.finished) return ticks;
+    public long tick(long ticks, Location<World> location, Player player) {
+        if (this.disabled || this.finished) return ticks;
 
 
-
-        for(Particle particle : particles){
-            particle.run(ticks,location,player);
+        for (Particle particle : particles) {
+            particle.run(ticks, location, player);
         }
 
-        if(ticks >= (duration-1) && (resetOnTimeout || !loop)){
-            if(!loop){
+        if (ticks >= (duration - 1) && (resetOnTimeout || !loop)) {
+            if (!loop) {
                 finished = true;
-            }else{
+            } else {
                 ticks = 0;
             }
-        }else {
+        } else {
             ticks += 1;
         }
         return ticks;
     }
 
-    public long tick(long ticks, Location<World> location){
-        return this.tick(ticks,location,null);
+    public long tick(long ticks, Location<World> location) {
+        return this.tick(ticks, location, null);
     }
 
-    public void reset(){
+    public void reset() {
         finished = false;
         duration = 0;
     }

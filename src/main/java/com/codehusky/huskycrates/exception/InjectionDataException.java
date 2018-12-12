@@ -1,8 +1,9 @@
 package com.codehusky.huskycrates.exception;
 
-public class InvalidMessageTypeError extends RuntimeException {
-    private String message;
-    public InvalidMessageTypeError(String message){
+public class InjectionDataException extends Exception {
+    private final String message;
+
+    public InjectionDataException(final String message) {
         this.message = message;
     }
 

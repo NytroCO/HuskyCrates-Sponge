@@ -7,25 +7,25 @@ import org.spongepowered.api.world.World;
 
 public class EffectInstance {
     private long ticks = 0;
-    private Effect effect;
-    private Location<World> location;
+    private final Effect effect;
+    private final Location<World> location;
     private Player player;
 
-    public EffectInstance(Effect effect, Location<World> location){
+    public EffectInstance(Effect effect, Location<World> location) {
         this.effect = effect.clone(); // avoid messing with other instances of the effect...
         this.location = location;
     }
 
-    public EffectInstance(Effect effect, Location<World> location, Player player){
-        this(effect,location);
+    public EffectInstance(Effect effect, Location<World> location, Player player) {
+        this(effect, location);
         this.player = player;
     }
 
     public void tick() {
-        ticks = effect.tick(ticks,location,player);
+        ticks = effect.tick(ticks, location, player);
     }
 
-    public void resetEffect(){
+    public void resetEffect() {
         effect.reset();
         ticks = 0;
     }

@@ -1,8 +1,9 @@
 package com.codehusky.huskycrates.exception;
 
-public class ItemBuildError extends RuntimeException {
-    private String message;
-    public ItemBuildError(final String message){
+public class SlotSelectionException extends RuntimeException {
+    private final String message;
+
+    public SlotSelectionException(final String message) {
         this.message = message;
     }
 

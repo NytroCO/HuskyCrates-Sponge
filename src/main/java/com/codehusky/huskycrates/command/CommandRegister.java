@@ -8,6 +8,7 @@ import org.spongepowered.api.command.args.*;
 import org.spongepowered.api.command.spec.CommandSpec;
 import org.spongepowered.api.text.Text;
 
+import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -15,44 +16,45 @@ import java.util.List;
 
 public class CommandRegister {
     public static void register(HuskyCrates plugin) {
+        // TODO: REPLACE stuff like /hc key [v] with flags
         CommandSpec mainCommand = CommandSpec.builder()
                 .child(CommandSpec.builder()
                         .executor(new BlockCommand())
                         .arguments(new CrateArgument(Text.of("crate")),
-                                GenericArguments.optionalWeak(GenericArguments.catalogedElement(Text.of("block"),BlockType.class)),
-                                GenericArguments.optionalWeak(GenericArguments.player(Text.of("player"))),GenericArguments.optional(GenericArguments.integer(Text.of("damage"))))
+                                GenericArguments.optionalWeak(GenericArguments.catalogedElement(Text.of("block"), BlockType.class)),
+                                GenericArguments.optionalWeak(GenericArguments.player(Text.of("player"))), GenericArguments.optional(GenericArguments.integer(Text.of("damage"))))
                         .permission("huskycrates.block.base")
-                        .build(),"b","blk","block")
+                        .build(), "b", "blk", "block")
                 .child(CommandSpec.builder()
                         .executor(new KeyCommand())
-                        .arguments(GenericArguments.optionalWeak(GenericArguments.literal(Text.of("virtual"),"v")),GenericArguments.firstParsing(new CrateArgument(Text.of("crate")),new KeyArgument(Text.of("key"))),GenericArguments.optionalWeak(GenericArguments.integer(Text.of("amount"))),GenericArguments.optional(GenericArguments.firstParsing(GenericArguments.literal(Text.of("all"),"@a"),GenericArguments.player(Text.of("player")))))
+                        .arguments(GenericArguments.optionalWeak(GenericArguments.literal(Text.of("virtual"), "v")), GenericArguments.firstParsing(new CrateArgument(Text.of("crate")), new KeyArgument(Text.of("key"))), GenericArguments.optionalWeak(GenericArguments.integer(Text.of("amount"))), GenericArguments.optional(GenericArguments.firstParsing(GenericArguments.literal(Text.of("all"), "@a"), GenericArguments.player(Text.of("player")))))
                         .permission("huskycrates.key.base")
-                        .build(),"k","key")
+                        .build(), "k", "key")
                 .child(CommandSpec.builder()
                         .executor(new BalanceCommand())
                         .arguments(GenericArguments.optionalWeak(GenericArguments.user(Text.of("player"))),
                                 GenericArguments.optionalWeak(GenericArguments.uuid(Text.of("uuid"))),
                                 GenericArguments.optionalWeak(GenericArguments.string(Text.of("username"))))
                         .permission("huskycrates.bal.base")
-                        .build(),"bal","balance")
+                        .build(), "bal", "balance")
                 .child(CommandSpec.builder()
                         .executor(new ReloadCommand())
                         .permission("huskycrates.reload")
-                        .build(),"rl","r","reload")
+                        .build(), "rl", "r", "reload")
                 .child(CommandSpec.builder()
                         .executor(new ItemNBTCommand())
                         .permission("huskycrates.admin")
-                        .build(),"itemnbt","nbt","in")
+                        .build(), "itemnbt", "nbt", "in")
                 .child(CommandSpec.builder()
                         .executor(new MainCommand())
-                        .build(),"h","help")
+                        .build(), "h", "help")
                 .executor(new MainCommand())
                 .description(Text.of("Main HuskyCrates Command."))
                 .extendedDescription(Text.of("For more information on the commands you can use with HuskyCrates, please visit the HuskyCrates documentation.\nYou can find a link to the documentation within /hc help."))
                 .build();
-        if(Sponge.getCommandManager().get("crate").isPresent())
+        if (Sponge.getCommandManager().get("crate").isPresent())
             Sponge.getCommandManager().removeMapping(Sponge.getCommandManager().get("crate").get()); // /crate will be mine simon, like it or not
-        Sponge.getCommandManager().register(plugin,mainCommand,"hc","husky","huskycrates","crate");
+        Sponge.getCommandManager().register(plugin, mainCommand, "hc", "husky", "huskycrates", "crate");
     }
 
     public static class CrateArgument extends CommandElement {
@@ -64,21 +66,22 @@ public class CommandRegister {
         @Nullable
         @Override
         protected Object parseValue(CommandSource source, CommandArgs args) throws ArgumentParseException {
-            if(HuskyCrates.registry.isCrate(args.peek())){
+            if (HuskyCrates.registry.isCrate(args.peek())) {
                 return HuskyCrates.registry.getCrate(args.next());
             }
-            throw args.createError(Text.of("\"" +args.next() + "\" is not a valid crate."));
+            throw args.createError(Text.of("\"" + args.next() + "\" is not a valid crate."));
         }
 
         @Override
-        public List<String> complete(CommandSource src, CommandArgs args, CommandContext context) {
+        @Nonnull
+        public List<String> complete(@Nonnull CommandSource src, @Nonnull CommandArgs args, @Nonnull CommandContext context) {
             try {
-                if(HuskyCrates.registry.isCrate(args.peek())){
+                if (HuskyCrates.registry.isCrate(args.peek())) {
                     return Collections.singletonList(args.next());
-                }else{
+                } else {
                     List<String> poss = new ArrayList<>();
-                    for(String crateID : HuskyCrates.registry.getCrates().keySet()){
-                        if(crateID.indexOf(args.peek()) == 0){
+                    for (String crateID : HuskyCrates.registry.getCrates().keySet()) {
+                        if (crateID.indexOf(args.peek()) == 0) {
                             poss.add(crateID);
                         }
                     }
@@ -101,21 +104,22 @@ public class CommandRegister {
         @Nullable
         @Override
         protected Object parseValue(CommandSource source, CommandArgs args) throws ArgumentParseException {
-            if(HuskyCrates.registry.isKey(args.peek())){
+            if (HuskyCrates.registry.isKey(args.peek())) {
                 return HuskyCrates.registry.getKey(args.next());
             }
-            throw args.createError(Text.of("\"" +args.next() + "\" is not a valid key."));
+            throw args.createError(Text.of("\"" + args.next() + "\" is not a valid key."));
         }
 
         @Override
-        public List<String> complete(CommandSource src, CommandArgs args, CommandContext context) {
+        @Nonnull
+        public List<String> complete(@Nonnull CommandSource src, @Nonnull CommandArgs args, @Nonnull CommandContext context) {
             try {
-                if(HuskyCrates.registry.isKey(args.peek())){
+                if (HuskyCrates.registry.isKey(args.peek())) {
                     return Collections.singletonList(args.next());
-                }else{
+                } else {
                     List<String> poss = new ArrayList<>();
-                    for(String crateID : HuskyCrates.registry.getKeys().keySet()){
-                        if(crateID.indexOf(args.peek()) == 0){
+                    for (String crateID : HuskyCrates.registry.getKeys().keySet()) {
+                        if (crateID.indexOf(args.peek()) == 0) {
                             poss.add(crateID);
                         }
                     }

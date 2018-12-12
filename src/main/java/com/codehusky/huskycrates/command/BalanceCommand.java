@@ -3,6 +3,7 @@ package com.codehusky.huskycrates.command;
 import com.codehusky.huskycrates.HuskyCrates;
 import ninja.leaping.configurate.ConfigurationNode;
 import org.spongepowered.api.command.CommandException;
+import org.spongepowered.api.command.CommandPermissionException;
 import org.spongepowered.api.command.CommandResult;
 import org.spongepowered.api.command.CommandSource;
 import org.spongepowered.api.command.args.CommandContext;
@@ -13,13 +14,15 @@ import org.spongepowered.api.text.Text;
 import org.spongepowered.api.text.format.TextColors;
 import org.spongepowered.api.text.serializer.TextSerializers;
 
+import javax.annotation.Nonnull;
 import java.util.HashMap;
 import java.util.Optional;
 import java.util.UUID;
 
 public class BalanceCommand implements CommandExecutor {
     @Override
-    public CommandResult execute(CommandSource src, CommandContext args) throws CommandException {
+    @Nonnull
+    public CommandResult execute(@Nonnull CommandSource src, @Nonnull CommandContext args) throws CommandException {
         /*
          .arguments(GenericArguments.optionalWeak(GenericArguments.user(Text.of("player"))),
                     GenericArguments.optionalWeak(GenericArguments.uuid(Text.of("uuid"))),
@@ -29,46 +32,43 @@ public class BalanceCommand implements CommandExecutor {
         Optional<UUID> uuid = args.getOne(Text.of("uuid"));
         Optional<String> username = args.getOne(Text.of("username"));
 
-        UUID balanceToUse = (src instanceof Player)?((Player) src).getUniqueId():null;
+        UUID balanceToUse = (src instanceof Player) ? ((Player) src).getUniqueId() : null;
 
-        if(user.isPresent()){
-            if(!src.hasPermission("huskycrates.bal.others")){
-                src.sendMessage(Text.of(TextColors.RED,"You do not have permission to view the balance of others."));
-                return CommandResult.success();
+        if (user.isPresent()) {
+            if (!src.hasPermission("huskycrates.bal.others")) {
+                throw new CommandPermissionException(Text.of(TextColors.RED, "You do not have permission to view the balance of others."));
             }
 
             src.sendMessage(HuskyCrates.balanceCommandMessages.getOtherBalanceHeader(user.get().getName()));
-        }else if(uuid.isPresent()){
-            if(!src.hasPermission("huskycrates.bal.others")){
-                src.sendMessage(Text.of(TextColors.RED,"You do not have permission to view the balance of others."));
-                return CommandResult.success();
+        } else if (uuid.isPresent()) {
+            if (!src.hasPermission("huskycrates.bal.others")) {
+                throw new CommandPermissionException(Text.of(TextColors.RED, "You do not have permission to view the balance of others."));
             }
 
             src.sendMessage(HuskyCrates.balanceCommandMessages.getUUIDBalanceHeader(uuid.get().toString()));
-        }else if(username.isPresent()){
-            if(!src.hasPermission("huskycrates.bal.others")){
-                src.sendMessage(Text.of(TextColors.RED,"You do not have permission to view the balance of others."));
-                return CommandResult.success();
+        } else if (username.isPresent()) {
+            if (!src.hasPermission("huskycrates.bal.others")) {
+                throw new CommandPermissionException(Text.of(TextColors.RED, "You do not have permission to view the balance of others."));
             }
 
             src.sendMessage(HuskyCrates.balanceCommandMessages.getUserNotExist(username.get()));
             return CommandResult.success();
-        }else{
+        } else {
             src.sendMessage(HuskyCrates.balanceCommandMessages.getSelfBalanceHeader());
         }
 
-        if(balanceToUse == null){
+        if (balanceToUse == null) {
             src.sendMessage(HuskyCrates.balanceCommandMessages.getNoValidUser());
             return CommandResult.success();
         }
 
         HashMap<String, Integer> balances = HuskyCrates.registry.getVirtualKeyBalances(balanceToUse);
 
-        for(String keyID : balances.keySet()){
-            src.sendMessage(HuskyCrates.balanceCommandMessages.getBalanceRow(HuskyCrates.registry.getKey(keyID).getName(),keyID,balances.get(keyID)));
+        for (String keyID : balances.keySet()) {
+            src.sendMessage(HuskyCrates.balanceCommandMessages.getBalanceRow(HuskyCrates.registry.getKey(keyID).getName(), keyID, balances.get(keyID)));
         }
 
-        if(balances.size() == 0){
+        if (balances.size() == 0) {
             src.sendMessage(HuskyCrates.balanceCommandMessages.getNoBalanceEntries());
         }
 
@@ -76,14 +76,15 @@ public class BalanceCommand implements CommandExecutor {
     }
 
     public static class Messages {
-        private String balanceRow;
-        private String otherBalanceHeader;
-        private String uuidBalanceHeader;
-        private String selfBalanceHeader;
-        private String userNotExist;
-        private String noValidUser;
-        private String noBalanceEntries;
-        public Messages(ConfigurationNode node){
+        private final String balanceRow;
+        private final String otherBalanceHeader;
+        private final String uuidBalanceHeader;
+        private final String selfBalanceHeader;
+        private final String userNotExist;
+        private final String noValidUser;
+        private final String noBalanceEntries;
+
+        public Messages(ConfigurationNode node) {
             this.balanceRow = node.getNode("balanceRow")
                     .getString("&7 - {key}&r&7: &a{amount}");
             this.otherBalanceHeader = node.getNode("otherBalanceHeader")
@@ -103,17 +104,17 @@ public class BalanceCommand implements CommandExecutor {
         public Text getBalanceRow(String keyName, String keyID, int amount) {
             return TextSerializers.FORMATTING_CODE.deserialize(
                     balanceRow
-                            .replace("{key}",keyName)
-                            .replace("{key.id}",keyID)
-                            .replace("{amount}","" + amount)
-                            .replace("{amount.plural}",(amount != 1)?"s":"")
+                            .replace("{key}", keyName)
+                            .replace("{key.id}", keyID)
+                            .replace("{amount}", "" + amount)
+                            .replace("{amount.plural}", (amount != 1) ? "s" : "")
             );
         }
 
         public Text getOtherBalanceHeader(String playerName) {
             return TextSerializers.FORMATTING_CODE.deserialize(
                     otherBalanceHeader
-                        .replace("{player}",playerName)
+                            .replace("{player}", playerName)
             );
         }
 
@@ -126,14 +127,14 @@ public class BalanceCommand implements CommandExecutor {
         public Text getUserNotExist(String username) {
             return TextSerializers.FORMATTING_CODE.deserialize(
                     userNotExist
-                        .replace("{username}",username)
+                            .replace("{username}", username)
             );
         }
 
         public Text getUUIDBalanceHeader(String uuid) {
             return TextSerializers.FORMATTING_CODE.deserialize(
                     uuidBalanceHeader
-                        .replace("{uuid}",uuid)
+                            .replace("{uuid}", uuid)
             );
         }
 

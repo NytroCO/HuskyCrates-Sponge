@@ -1,8 +1,9 @@
 package com.codehusky.huskycrates.exception;
 
-public class VirtualKeyStarvedError extends RuntimeException {
-    private String message;
-    public VirtualKeyStarvedError(String message){
+public class RewardDeliveryException extends RuntimeException {
+    private final String message;
+
+    public RewardDeliveryException(final String message) {
         this.message = message;
     }
 

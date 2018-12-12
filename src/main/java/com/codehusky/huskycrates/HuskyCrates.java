@@ -10,7 +10,7 @@ import com.codehusky.huskycrates.crate.physical.PhysicalCrate;
 import com.codehusky.huskycrates.crate.virtual.Crate;
 import com.codehusky.huskycrates.crate.virtual.Key;
 import com.codehusky.huskycrates.event.CrateInjectionEvent;
-import com.codehusky.huskycrates.exception.ConfigParseError;
+import com.codehusky.huskycrates.exception.ConfigParseException;
 import com.google.inject.Inject;
 import ninja.leaping.configurate.commented.CommentedConfigurationNode;
 import ninja.leaping.configurate.hocon.HoconConfigurationLoader;
@@ -30,7 +30,6 @@ import org.spongepowered.api.event.game.state.GameStoppingServerEvent;
 import org.spongepowered.api.plugin.Dependency;
 import org.spongepowered.api.plugin.Plugin;
 import org.spongepowered.api.plugin.PluginContainer;
-import org.spongepowered.api.scheduler.Task;
 import org.spongepowered.api.world.Location;
 import org.spongepowered.api.world.World;
 
@@ -42,21 +41,28 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.ConcurrentModificationException;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Consumer;
 
 
-@Plugin(id="huskycrates", name = "HuskyCrates", version = "2.0.0PRE7", description = "A Crate Plugin for Sponge!",dependencies = {@Dependency(id="huskyui",version = "0.6.0PRE2")})
+@Plugin(id = "huskycrates", name = "HuskyCrates", version = "2.0.0PRE7", description = "A Crate Plugin for Sponge!", dependencies = {@Dependency(id = "huskyui", version = "0.6.0PRE2")})
 public class HuskyCrates {
+
+    private static final ScriptEngineManager mgr = new ScriptEngineManager();
+    public static final ScriptEngine jsengine = mgr.getEngineByName("JavaScript");
+    public static HuskyCrates instance;
+    public static Registry registry;
+    public static boolean KEY_SECURITY = true;
+    public static KeyCommand.Messages keyCommandMessages;
+    public static BlockCommand.Messages blockCommandMessages;
+    public static BalanceCommand.Messages balanceCommandMessages;
+    public static Crate.Messages crateMessages;
+
     //@Inject
     public Logger logger;
-
     @Inject
     public PluginContainer pC;
-
     @Inject
     @ConfigDir(sharedRoot = false)
     public Path configDir;
-
     @Inject
     @DefaultConfig(sharedRoot = false)
     public ConfigurationLoader<CommentedConfigurationNode> config;
@@ -67,28 +73,14 @@ public class HuskyCrates {
     public Path keyConfigPath;
     public ConfigurationLoader<CommentedConfigurationNode> keyConfig;
 
-    public Cause genericCause;
-
-    public static HuskyCrates instance;
-
-    public static Registry registry;
-
     public boolean inErrorState = false;
-
     private CrateListeners crateListeners;
-
-    public static boolean KEY_SECURITY = true;
-
-    public static KeyCommand.Messages keyCommandMessages;
-    public static BlockCommand.Messages blockCommandMessages;
-    public static BalanceCommand.Messages balanceCommandMessages;
-    public static Crate.Messages crateMessages;
-
-    private static ScriptEngineManager mgr = new ScriptEngineManager();
-    public static ScriptEngine jsengine = mgr.getEngineByName("JavaScript");
+    private float cumulative = 0;
+    private int iterations = 0;
+    private long lastMessage = 0;
 
     @Listener
-    public void gameInit(GamePreInitializationEvent event){
+    public void gameInit(GamePreInitializationEvent event) {
         registry = new Registry();
         logger = LoggerFactory.getLogger(pC.getName());
         instance = this;
@@ -98,56 +90,52 @@ public class HuskyCrates {
         crateConfig = HoconConfigurationLoader.builder().setPath(crateConfigPath).build();
         keyConfig = HoconConfigurationLoader.builder().setPath(keyConfigPath).build();
     }
-    private float cumulative = 0;
-    private int iterations = 0;
-    private long lastMessage = 0;
+
     @Listener
-    public void gamePostInit(GamePostInitializationEvent event){
+    public void gamePostInit(GamePostInitializationEvent event) {
         loadConfig();
 
         crateListeners = new CrateListeners();
 
-        Sponge.getEventManager().registerListeners(this,crateListeners);
+        Sponge.getEventManager().registerListeners(this, crateListeners);
 
-        Sponge.getScheduler().createTaskBuilder().execute(new Consumer<Task>() {
-            @Override
-            public void accept(Task task) {
-                try {
-                    long startTime = System.nanoTime();
-                    int particles = 0;
-                    for (Location<World> location : registry.getPhysicalCrates().keySet()) {
-                        PhysicalCrate pcrate = registry.getPhysicalCrate(location);
-                        if (pcrate.getIdleEffect() != null) {
-                            pcrate.getIdleEffect().tick();
-                            particles += pcrate.getIdleEffect().getEffect().getParticleCount();
-                        }
+        Sponge.getScheduler().createTaskBuilder().execute(task -> {
+            try {
+                long startTime = System.nanoTime();
+                int particles = 0;
+                for (Location<World> location : registry.getPhysicalCrates().keySet()) {
+                    PhysicalCrate pcrate = registry.getPhysicalCrate(location);
+                    if (pcrate.getIdleEffect() != null) {
+                        pcrate.getIdleEffect().tick();
+                        particles += pcrate.getIdleEffect().getEffect().getParticleCount();
                     }
-                    long endTime = System.nanoTime();
-                    cumulative += (endTime - startTime);
-                    iterations++;
-                    if(lastMessage + 1000 < System.currentTimeMillis()){
-                        lastMessage = System.currentTimeMillis();
-                        float avg = (cumulative / ((float)iterations));
-                        /*System.out.println("AVG PARTICLE TIME: " + avg + " nanoseconds (" + (avg / 1000000) + " milliseconds)");
-                        System.out.println("EST TIME PER EFFECT: " + (avg / particles) + " nanoseconds (" + (avg / particles / 1000000) + " milliseconds)");
-                        System.out.println("PARTICLES: " + particles);
-                        System.out.println("--------------------------");*/
-                        iterations = 0;
-                        cumulative = 0;
+                }
+                long endTime = System.nanoTime();
+                cumulative += (endTime - startTime);
+                iterations++;
+                if (lastMessage + 1000 < System.currentTimeMillis()) {
+                    lastMessage = System.currentTimeMillis();
+                    float avg = (cumulative / ((float) iterations));
+                    /*System.out.println("AVG PARTICLE TIME: " + avg + " nanoseconds (" + (avg / 1000000) + " milliseconds)");
+                    System.out.println("EST TIME PER EFFECT: " + (avg / particles) + " nanoseconds (" + (avg / particles / 1000000) + " milliseconds)");
+                    System.out.println("PARTICLES: " + particles);
+                    System.out.println("--------------------------");*/
+                    iterations = 0;
+                    cumulative = 0;
+                }
+                //System.out.println("PARTICLE TIME: " + ((endTime - startTime)/1000000.0) + " milliseconds");
+                ArrayList<EffectInstance> nuke = new ArrayList<>();
+                for (EffectInstance inst : registry.getEffects()) {
+                    inst.tick();
+                    if (inst.getEffect().isFinished()) {
+                        nuke.add(inst);
                     }
-                    //System.out.println("PARTICLE TIME: " + ((endTime - startTime)/1000000.0) + " milliseconds");
-                    ArrayList<EffectInstance> nuke = new ArrayList<>();
-                    for (EffectInstance inst : registry.getEffects()) {
-                        inst.tick();
-                        if (inst.getEffect().isFinished()) {
-                            nuke.add(inst);
-                        }
-                    }
-                    for (EffectInstance inst : nuke) {
-                        inst.resetEffect();
-                        registry.removeEffect(inst);
-                    }
-                }catch (ConcurrentModificationException e){}
+                }
+                for (EffectInstance inst : nuke) {
+                    inst.resetEffect();
+                    registry.removeEffect(inst);
+                }
+            } catch (ConcurrentModificationException ignored) {
             }
         }).intervalTicks(1).async().submit(this);
 
@@ -164,41 +152,41 @@ public class HuskyCrates {
 
         CommentedConfigurationNode mainConfig;
 
-        if(checkOrInitalizeConfig(crateConfigPath) && checkOrInitalizeConfig(keyConfigPath)){
+        if (checkOrInitalizeConfig(crateConfigPath) && checkOrInitalizeConfig(keyConfigPath)) {
             try {
                 mainConfig = config.load();
                 crates = crateConfig.load();
                 keys = keyConfig.load();
 
-                if(!mainConfig.getNode("crates").isVirtual()){
-                    throw new ConfigParseError("HuskyCrates.conf contains 1.x config data! Please update it using the Config Converter application!",mainConfig.getNode("crates").getPath());
+                if (!mainConfig.getNode("crates").isVirtual()) {
+                    throw new ConfigParseException("HuskyCrates.conf contains 1.x config data! Please update it using the Config Converter application!", mainConfig.getNode("crates").getPath());
                 }
 
-                if(!crates.getNode("secureKeys").isVirtual() && !crates.getNode("secureKeys").hasMapChildren()){
-                    throw new ConfigParseError("\"secureKeys\" must be removed from \"crates.conf\"!",crates.getNode("secureKeys").getPath());
+                if (!crates.getNode("secureKeys").isVirtual() && !crates.getNode("secureKeys").hasMapChildren()) {
+                    throw new ConfigParseException("\"secureKeys\" must be removed from \"crates.conf\"!", crates.getNode("secureKeys").getPath());
                 }
 
-                if(mainConfig.getNode("secureKeys").isVirtual()){
+                if (mainConfig.getNode("secureKeys").isVirtual()) {
                     mainConfig.getNode("secureKeys").setValue(HuskyCrates.KEY_SECURITY);
-                }else{
+                } else {
                     HuskyCrates.KEY_SECURITY = mainConfig.getNode("secureKeys").getBoolean(true);
                 }
 
-                keyCommandMessages = new KeyCommand.Messages(mainConfig.getNode("messages","keyCommand"));
-                blockCommandMessages = new BlockCommand.Messages(mainConfig.getNode("messages","blockCommand"));
-                balanceCommandMessages = new BalanceCommand.Messages(mainConfig.getNode("messages","balanceCommand"));
+                keyCommandMessages = new KeyCommand.Messages(mainConfig.getNode("messages", "keyCommand"));
+                blockCommandMessages = new BlockCommand.Messages(mainConfig.getNode("messages", "blockCommand"));
+                balanceCommandMessages = new BalanceCommand.Messages(mainConfig.getNode("messages", "balanceCommand"));
 
-                crateMessages = new Crate.Messages(mainConfig.getNode("messages","crate"),null);
+                crateMessages = new Crate.Messages(mainConfig.getNode("messages", "crate"), null);
 
                 // k both work. wowowwoowow
 
-                for(CommentedConfigurationNode node : keys.getChildrenMap().values()){
+                for (CommentedConfigurationNode node : keys.getChildrenMap().values()) {
                     Key thisKey = new Key(node);
                     registry.registerKey(thisKey);
 
                 }
 
-                for(CommentedConfigurationNode node : crates.getChildrenMap().values()){
+                for (CommentedConfigurationNode node : crates.getChildrenMap().values()) {
                     Crate thisCrate = new Crate(node);
                     registry.registerCrate(thisCrate);
                 }
@@ -206,22 +194,22 @@ public class HuskyCrates {
                 config.save(mainConfig);
                 Sponge.getEventManager().post(new CrateInjectionEvent());
 
-            }catch(Exception e){
+            } catch (Exception e) {
                 inErrorState = true;
                 e.printStackTrace();
                 logger.error("Failed to register crates and keys. Please review the errors printed above.");
                 //todo: handle exception based on type
             }
-        }else{
+        } else {
             logger.error("Config initialization experienced an error. Please report this to the developer for help.");
         }
     }
 
-    private boolean checkOrInitalizeConfig(Path path){
-        if(!path.toFile().exists()) {
+    private boolean checkOrInitalizeConfig(Path path) {
+        if (!path.toFile().exists()) {
             try {
                 boolean success = path.toFile().createNewFile();
-                if(!success){
+                if (!success) {
                     logger.error("Failed to create new config at " + path.toAbsolutePath().toString());
                     return false;
                 }
@@ -239,12 +227,12 @@ public class HuskyCrates {
     }
 
     @Listener
-    public void gameStarted(GameStartedServerEvent event){
+    public void gameStarted(GameStartedServerEvent event) {
         HuskyCrates.registry.loadFromDatabase();
         CommandRegister.register(this);
-        if(inErrorState) {
+        if (inErrorState) {
             logger.error("Crates has started with errors. Please review the issue(s) above.");
-        }else {
+        } else {
             logger.info("Crates has started successfully.");
 
         }
@@ -261,23 +249,23 @@ public class HuskyCrates {
         registry.pushDirty();
         registry.clearRegistry();
         loadConfig();
-        if(!inErrorState) {
+        if (!inErrorState) {
             registry.loadFromDatabase();
         }
-        if(inErrorState) {
+        if (inErrorState) {
             logger.error("Crates has reloaded with errors. Please review the issue(s) above.");
-        }else {
+        } else {
             logger.info("Crates has reloaded successfully.");
         }
     }
 
     @Listener
-    public void gameReloaded(GameReloadEvent event){
+    public void gameReloaded(GameReloadEvent event) {
         reload();
     }
 
     @Listener
-    public void gameShutdown(GameStoppingServerEvent event){
+    public void gameShutdown(GameStoppingServerEvent event) {
         registry.pushDirty();
         logger.info("HuskyCrates has shut down.");
     }

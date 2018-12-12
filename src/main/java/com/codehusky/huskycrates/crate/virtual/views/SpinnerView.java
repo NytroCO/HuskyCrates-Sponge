@@ -28,63 +28,60 @@ import java.util.Random;
 import java.util.function.Consumer;
 
 public class SpinnerView implements Consumer<Page> {
-    private Location<World> physicalLocation;
-    private Crate crate;
-    private int selectedSlot;
-    private Player player;
-    private Config config;
-
-    public SpinnerView(PhysicalCrate pcrate, Player player){
+    int spinnerOffset = 0;
+    int currentTicks = 0;
+    double currentTickDelay = 1;
+    int variance;
+    boolean rewardGiven = false;
+    boolean hasWon = false;
+    long tickWinBegin = 0;
+    private final Location<World> physicalLocation;
+    private final Crate crate;
+    private final int selectedSlot;
+    private final Player player;
+    private final Config config;
+    public SpinnerView(PhysicalCrate pcrate, Player player) {
         this.crate = pcrate.getCrate();
         this.physicalLocation = pcrate.getLocation();
         this.config = (Config) crate.getViewConfig();
-        this.variance = (int)Math.round(new Random().nextDouble() * config.getTicksToSelectionVariance());
+        this.variance = (int) Math.round(new Random().nextDouble() * config.getTicksToSelectionVariance());
         this.selectedSlot = crate.selectSlot();
         this.player = player;
         player.playSound(SoundTypes.BLOCK_WOOD_BUTTON_CLICK_OFF, player.getPosition(), 1.0);
         Page.PageBuilder builder =
-            Page.builder()
-                .setAutoPaging(false)
-                .setTitle(TextSerializers.FORMATTING_CODE.deserialize(crate.getName()))
-                .setUpdatable(true)
-                .setUpdater(this)
-                    //.setUpdateTickRate(5)
+                Page.builder()
+                        .setAutoPaging(false)
+                        .setTitle(TextSerializers.FORMATTING_CODE.deserialize(crate.getName()))
+                        .setUpdatable(true)
+                        .setUpdater(this)
+                        //.setUpdateTickRate(5)
 
-                .setInterrupt(() -> {
-                    if(rewardGiven) return;
-                    try {
-                        crate.getSlot(selectedSlot).rewardPlayer(player, this.physicalLocation);
-                        player.playSound(SoundTypes.ENTITY_EXPERIENCE_ORB_PICKUP, player.getLocation().getPosition(), 0.5);
-                    }catch (Exception e){
-                        e.printStackTrace();
-                        HuskyCrates.instance.logger.error("Error occurred while trying to reward player.");
-                        player.sendMessage(Text.of(TextColors.RED,"A fatal exception has occurred while delivering your reward. Please contact server administration."));
-                    }
-                    rewardGiven = true;
-                })
-                .setInventoryDimension(InventoryDimension.of(9,3));
+                        .setInterrupt(() -> {
+                            if (rewardGiven) return;
+                            try {
+                                crate.getSlot(selectedSlot).rewardPlayer(player, this.physicalLocation);
+                                player.playSound(SoundTypes.ENTITY_EXPERIENCE_ORB_PICKUP, player.getLocation().getPosition(), 0.5);
+                            } catch (Exception e) {
+                                e.printStackTrace();
+                                HuskyCrates.instance.logger.error("Error occurred while trying to reward player.");
+                                player.sendMessage(Text.of(TextColors.RED, "A fatal exception has occurred while delivering your reward. Please contact server administration."));
+                            }
+                            rewardGiven = true;
+                        })
+                        .setInventoryDimension(InventoryDimension.of(9, 3));
 
         Element borderElement = new Element(config.getBorderItem().toItemStack());
 
         Element selectorItem = new Element(config.getSelectorItem().toItemStack());
 
-        for(int i = 0; i < 9*3; i++){
-            builder.putElement(i,(i == 4 | i == 22)? selectorItem : borderElement);
+        for (int i = 0; i < 9 * 3; i++) {
+            builder.putElement(i, (i == 4 | i == 22) ? selectorItem : borderElement);
         }
         Page page = builder.build("meme");
         StateContainer sc = new StateContainer();
         sc.setInitialState(page);
         sc.launchFor(player);
     }
-
-    int spinnerOffset = 0;
-    int currentTicks = 0;
-    double currentTickDelay = 1;
-    int variance = 0;
-    boolean rewardGiven = false;
-
-    boolean hasWon = false;
-    long tickWinBegin = 0;
 
     private long getTicksToSelection() {
         return config.getTicksToSelection() + variance;
@@ -95,37 +92,35 @@ public class SpinnerView implements Consumer<Page> {
     }
 
     private ItemStack getConfetti() {
-        DyeColor[] colors = {DyeColors.BLUE,DyeColors.CYAN,DyeColors.LIGHT_BLUE,DyeColors.LIME,DyeColors.MAGENTA,DyeColors.ORANGE,DyeColors.PINK,DyeColors.PURPLE,DyeColors.RED, DyeColors.YELLOW};
-        ItemStack g =ItemStack.builder()
+        DyeColor[] colors = {DyeColors.BLUE, DyeColors.CYAN, DyeColors.LIGHT_BLUE, DyeColors.LIME, DyeColors.MAGENTA, DyeColors.ORANGE, DyeColors.PINK, DyeColors.PURPLE, DyeColors.RED, DyeColors.YELLOW};
+        ItemStack g = ItemStack.builder()
                 .itemType(ItemTypes.STAINED_GLASS_PANE)
-                .add(Keys.DYE_COLOR,colors[(int)Math.floor(Math.random() * colors.length)])
+                .add(Keys.DYE_COLOR, colors[(int) Math.floor(Math.random() * colors.length)])
                 .build();
-        g.offer(Keys.DISPLAY_NAME, Text.of(TextStyles.RESET,"You win!"));
+        g.offer(Keys.DISPLAY_NAME, Text.of(TextStyles.RESET, "You win!"));
         return g;
     }
 
     @Override
     public void accept(Page page) {
-        if(winCondition() && !hasWon){
+        if (winCondition() && !hasWon) {
             hasWon = true;
             tickWinBegin = page.getTicks();
         }
-        if(!hasWon) {
+        if (!hasWon) {
             int num = 0;
             for (Inventory slot : page.getPageView().slots()) {
                 if (num >= 10 && num <= 16) {
-                    int spinnerSlotAffected = (num-10);
-                    int slotSelected = Math.max(0,(
+                    int spinnerSlotAffected = (num - 10);
+                    int slotSelected = Math.max(0, (
                             /* Buffer and Centering*/
-                            (spinnerOffset + spinnerSlotAffected - 3 + crate.getSlotCount()*5)
-                    ) );
+                            (spinnerOffset + spinnerSlotAffected - 3 + crate.getSlotCount() * 5)
+                    ));
                     //offset to fit
-                    slotSelected+= selectedSlot - (getTicksToSelection()%crate.getSlotCount());
+                    slotSelected += selectedSlot - (getTicksToSelection() % crate.getSlotCount());
                     //wrap
                     slotSelected = slotSelected % crate.getSlotCount();
-                    if(currentTicks >= currentTickDelay && num == 13){
-                        //System.out.println(slotSelected + " should be " + selectedSlot + " (" + ((config.getTicksToSelection() + variance ) - spinnerOffset) + " ticks remain) (" + spinnerOffset + ")");
-                    }
+                    //System.out.println(slotSelected + " should be " + selectedSlot + " (" + ((config.getTicksToSelection() + variance ) - spinnerOffset) + " ticks remain) (" + spinnerOffset + ")");
                     slot.set(
                             //(spinner offset + (a buffer to prevent neg numbers + (sel slot + 1 offset) - 3 for centering) + (slotnum rel to center) % slot count
                             crate.getSlot(slotSelected)
@@ -141,13 +136,13 @@ public class SpinnerView implements Consumer<Page> {
                 currentTickDelay *= config.getTickDelayMultiplier();
                 spinnerOffset++;
                 page.getObserver().playSound(
-                        (winCondition())?
-                                SoundTypes.ENTITY_FIREWORK_LAUNCH:
+                        (winCondition()) ?
+                                SoundTypes.ENTITY_FIREWORK_LAUNCH :
                                 SoundTypes.UI_BUTTON_CLICK, page.getObserver().getLocation().getPosition(), 0.5);
             }
             currentTicks++;
-        }else{
-            if(page.getTicks() % 5 == 0) {
+        } else {
+            if (page.getTicks() % 5 == 0) {
                 int num = 0;
                 for (Inventory slot : page.getPageView().slots()) {
                     if (num != 13) {
@@ -156,25 +151,25 @@ public class SpinnerView implements Consumer<Page> {
                     num++;
                 }
             }
-            if(page.getTicks() > tickWinBegin + 20*3){
+            if (page.getTicks() > tickWinBegin + 20 * 3) {
                 page.getObserver().closeInventory();
             }
         }
     }
 
     public static class Config extends ViewConfig {
-        private Item selectorItem;
-        private Integer ticksToSelection;
-        private Double tickDelayMultiplier;
-        private Integer ticksToSelectionVariance;
-        public Config(ConfigurationNode node){
+        private final Item selectorItem;
+        private final Integer ticksToSelection;
+        private final Double tickDelayMultiplier;
+        private final Integer ticksToSelectionVariance;
+
+        public Config(ConfigurationNode node) {
             super(node);
-            if(!node.getNode("selectorItem").isVirtual()) {
+            if (!node.getNode("selectorItem").isVirtual()) {
                 this.selectorItem = new Item(node.getNode("selectorItem"));
-            }else{
-                this.selectorItem = new Item("&6HuskyCrates", ItemTypes.REDSTONE_TORCH,null,1,null,null,null,null);
+            } else {
+                this.selectorItem = new Item("&6HuskyCrates", ItemTypes.REDSTONE_TORCH, null, 1, null, null, null, null);
             }
-            System.out.println(node.getNode("ticksToSelection").getValue());
             this.ticksToSelection = node.getNode("ticksToSelection").getInt(30);
             this.tickDelayMultiplier = node.getNode("tickDelayMultiplier").getDouble(1.08);
             this.ticksToSelectionVariance = node.getNode("ticksToSelectionVariance").getInt(0);

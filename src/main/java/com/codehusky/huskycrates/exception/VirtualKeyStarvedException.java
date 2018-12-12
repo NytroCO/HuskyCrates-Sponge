@@ -1,9 +1,9 @@
 package com.codehusky.huskycrates.exception;
 
-public class DoubleRegistrationError extends RuntimeException {
-    private String message;
+public class VirtualKeyStarvedException extends RuntimeException {
+    private final String message;
 
-    public DoubleRegistrationError(final String message){
+    public VirtualKeyStarvedException(String message) {
         this.message = message;
     }
 

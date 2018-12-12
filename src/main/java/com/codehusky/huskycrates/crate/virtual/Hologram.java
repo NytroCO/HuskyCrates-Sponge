@@ -1,6 +1,6 @@
 package com.codehusky.huskycrates.crate.virtual;
 
-import com.codehusky.huskycrates.exception.ConfigParseError;
+import com.codehusky.huskycrates.exception.ConfigParseException;
 import com.google.common.reflect.TypeToken;
 import ninja.leaping.configurate.ConfigurationNode;
 import ninja.leaping.configurate.objectmapping.ObjectMappingException;
@@ -12,11 +12,11 @@ public class Hologram {
     private double yOffset;
     private double entityYOffset;
 
-    public Hologram(ConfigurationNode node){
+    public Hologram(ConfigurationNode node) {
         try {
             this.lines = node.getNode("lines").getList(TypeToken.of(String.class));
         } catch (ObjectMappingException e) {
-            throw new ConfigParseError("Hologram lines must be strings!",node.getNode("lines").getPath());
+            throw new ConfigParseException("Hologram lines must be strings!", node.getNode("lines").getPath());
         }
 
         this.yOffset = node.getNode("yOffset").getDouble(0.0);

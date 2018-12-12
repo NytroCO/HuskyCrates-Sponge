@@ -15,32 +15,33 @@ import org.spongepowered.api.text.Text;
 import org.spongepowered.api.text.format.TextColors;
 import org.spongepowered.api.text.serializer.TextSerializers;
 
+import javax.annotation.Nonnull;
 import java.io.IOException;
 
-@SuppressWarnings("deprecation")
 public class ItemNBTCommand implements CommandExecutor {
     @Override
-    public CommandResult execute(CommandSource src, CommandContext args) throws CommandException {
-        if(src instanceof Player){
-            Player player = (Player)src;
-            if(player.getItemInHand(HandTypes.MAIN_HAND).isPresent()){
+    @Nonnull
+    public CommandResult execute(@Nonnull CommandSource src, @Nonnull CommandContext args) {
+        if (src instanceof Player) {
+            Player player = (Player) src;
+            if (player.getItemInHand(HandTypes.MAIN_HAND).isPresent()) {
                 ItemStack stack = player.getItemInHand(HandTypes.MAIN_HAND).get();
-                src.sendMessage(Text.of(TextColors.GRAY,"---- ITEM NBT ----"));
-                String beep = null;
+                src.sendMessage(Text.of(TextColors.GRAY, "---- ITEM NBT ----"));
+                String beep;
                 try {
-                    beep = DataFormats.HOCON.write((DataView)stack.toContainer().get(DataQuery.of("UnsafeData")).get());
-                    src.sendMessage(Text.of(TextSerializers.LEGACY_FORMATTING_CODE.replaceCodes(beep,'&')));
+                    beep = DataFormats.HOCON.write((DataView) stack.toContainer().get(DataQuery.of("UnsafeData")).get());
+                    src.sendMessage(Text.of(TextSerializers.LEGACY_FORMATTING_CODE.replaceCodes(beep, '&')));
                 } catch (IOException e) {
                     e.printStackTrace();
-                    src.sendMessage(Text.of(TextColors.RED,"No custom NBT is present on this item."));
+                    src.sendMessage(Text.of(TextColors.RED, "No custom NBT is present on this item."));
                 }
 
-                src.sendMessage(Text.of(TextColors.GRAY,"---- ITEM NBT ----"));
-            }else{
-                src.sendMessage(Text.of(TextColors.RED,"You must be holding an item to use this command."));
+                src.sendMessage(Text.of(TextColors.GRAY, "---- ITEM NBT ----"));
+            } else {
+                src.sendMessage(Text.of(TextColors.RED, "You must be holding an item to use this command."));
             }
-        }else{
-            src.sendMessage(Text.of(TextColors.RED,"You must be a player to use this command."));
+        } else {
+            src.sendMessage(Text.of(TextColors.RED, "You must be a player to use this command."));
         }
 
         return CommandResult.success();

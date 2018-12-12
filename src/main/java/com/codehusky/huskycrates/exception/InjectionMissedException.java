@@ -1,9 +1,9 @@
 package com.codehusky.huskycrates.exception;
 
-public class SlotSelectionError extends RuntimeException {
-    private String message;
+public class InjectionMissedException extends RuntimeException {
+    private final String message;
 
-    public SlotSelectionError(final String message){
+    public InjectionMissedException(final String message) {
         this.message = message;
     }
 

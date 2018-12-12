@@ -8,9 +8,9 @@ import org.spongepowered.api.event.impl.AbstractEvent;
 
 public class CrateInjectionEvent extends AbstractEvent {
 
-    private Cause cause;
+    private final Cause cause;
 
-    public CrateInjectionEvent(){
+    public CrateInjectionEvent() {
         try (CauseStackManager.StackFrame frame = Sponge.getCauseStackManager().pushCauseFrame()) {
 
             frame.pushCause(HuskyCrates.instance);

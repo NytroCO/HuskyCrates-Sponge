@@ -1,9 +1,9 @@
 package com.codehusky.huskycrates.exception;
 
-public class InjectionDataError extends RuntimeException {
-    private String message;
+public class NoMessageContextException extends RuntimeException {
+    private final String message;
 
-    public InjectionDataError(final String message){
+    public NoMessageContextException(String message) {
         this.message = message;
     }
 

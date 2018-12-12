@@ -1,9 +1,9 @@
 package com.codehusky.huskycrates.exception;
 
-public class InjectionMissedError extends RuntimeException {
-    private String message;
+public class DoubleRegistrationException extends RuntimeException {
+    private final String message;
 
-    public InjectionMissedError(final String message){
+    public DoubleRegistrationException(final String message) {
         this.message = message;
     }
 

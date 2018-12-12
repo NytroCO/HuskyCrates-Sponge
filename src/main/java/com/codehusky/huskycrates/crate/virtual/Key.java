@@ -14,36 +14,58 @@ import java.util.UUID;
  * Keys can also be virtual, meaning they have no real-world item, allowing for quest-like features.
  */
 public class Key {
-    private String id;
+    private final String id;
     private String name;
-    private Boolean isVirtual;
-    private Boolean canLaunchCrate;
+    private final Boolean isVirtual;
+    private final Boolean canLaunchCrate;
     private String crateIDToLaunch;
     private Item item;
 
-    public Key(ConfigurationNode node){
+    public Key(ConfigurationNode node) {
         this.id = node.getKey().toString();
         this.name = node.getNode("name").getString(id);
         this.isVirtual = node.getNode("isVirtual").getBoolean(false);
-        if(!this.isVirtual){
+        if (!this.isVirtual) {
             this.item = new Item(node.getNode("item"));
         }
         this.canLaunchCrate = !isVirtual && node.getNode("canLaunchCrate").getBoolean(false);
         this.crateIDToLaunch = node.getNode("crateIDToLaunch").getString();
     }
 
-    public Key(String id){
+    public Key(String id) {
         this.id = id;
         this.isVirtual = true;
         this.canLaunchCrate = false;
     }
 
-    public Key(String id, Item item, boolean canLaunchCrate){
+    public Key(String id, Item item, boolean canLaunchCrate) {
         this.id = id;
         this.item = item;
         this.isVirtual = false;
         this.canLaunchCrate = canLaunchCrate;
-        this.crateIDToLaunch = (this.canLaunchCrate)?id.replace("LOCALKEY_",""):null;
+        this.crateIDToLaunch = (this.canLaunchCrate) ? id.replace("LOCALKEY_", "") : null;
+    }
+
+    public static String extractKeyId(ItemStack stack) {
+        try {
+            return stack.toContainer().get(DataQuery.of("UnsafeData", "HCKEYID")).get().toString();
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    public static UUID extractKeyUUID(ItemStack stack) {
+        if (HuskyCrates.KEY_SECURITY) {
+            Optional<Object> potentialUUID = stack.toContainer().get(DataQuery.of("UnsafeData", "HCKEYUUID"));
+            if (potentialUUID.isPresent()) {
+                try {
+                    return UUID.fromString(potentialUUID.get().toString());
+                } catch (Exception e) {
+                    return null;
+                }
+            }
+        }
+        return null;
     }
 
     public String getId() {
@@ -51,7 +73,7 @@ public class Key {
     }
 
     public String getName() {
-        if(name == null){
+        if (name == null) {
             return item.getName();
         }
         return name;
@@ -66,7 +88,7 @@ public class Key {
     }
 
     public Crate crateToLaunch() {
-        if(canLaunchCrate && HuskyCrates.registry.isCrate(crateIDToLaunch)){
+        if (canLaunchCrate && HuskyCrates.registry.isCrate(crateIDToLaunch)) {
             return HuskyCrates.registry.getCrate(crateIDToLaunch);
         }
         return null;
@@ -79,13 +101,14 @@ public class Key {
     public ItemStack getKeyItemStack() {
         return this.getKeyItemStack(1);
     }
+
     public ItemStack getKeyItemStack(int amount) {
-        if(isVirtual) return null;
+        if (isVirtual) return null;
         DataContainer container = item.toItemStack()
                 .toContainer()
-                .set(DataQuery.of("UnsafeData","HCKEYID"),this.id);
-        if(HuskyCrates.KEY_SECURITY){
-            container = container.set(DataQuery.of("UnsafeData","HCKEYUUID"),HuskyCrates.registry.generateSecureKey(id,amount).toString());
+                .set(DataQuery.of("UnsafeData", "HCKEYID"), this.id);
+        if (HuskyCrates.KEY_SECURITY) {
+            container = container.set(DataQuery.of("UnsafeData", "HCKEYUUID"), HuskyCrates.registry.generateSecureKey(id, amount).toString());
         }
         return ItemStack.builder()
                 .fromContainer(container)
@@ -93,31 +116,8 @@ public class Key {
                 .build();
     }
 
-    public static String extractKeyId(ItemStack stack){
-        try {
-            return stack.toContainer().get(DataQuery.of("UnsafeData", "HCKEYID")).get().toString();
-        }catch (Exception e){
-            return null;
-        }
-    }
-
-    public static UUID extractKeyUUID(ItemStack stack){
-        if(HuskyCrates.KEY_SECURITY) {
-            Optional<Object> potentialUUID = stack.toContainer().get(DataQuery.of("UnsafeData", "HCKEYUUID"));
-            if(potentialUUID.isPresent()) {
-                try {
-                    return UUID.fromString(potentialUUID.get().toString());
-                }catch (Exception e){
-                    System.out.println(potentialUUID.get());
-                    return null;
-                }
-            }
-        }
-        return null;
-    }
-
-    public boolean testKey(ItemStack stack){
-        if(isVirtual) return false;
+    public boolean testKey(ItemStack stack) {
+        if (isVirtual) return false;
         return this.id.equals(extractKeyId(stack)) &&
                 stack.getType().equals(item.getItemType());
     }

@@ -22,15 +22,16 @@ import org.spongepowered.api.world.Location;
 import org.spongepowered.api.world.World;
 
 import java.util.function.Consumer;
+
 //TODO: implement roulette view as current implementation is just the simple view.
 public class RouletteView implements Consumer<Page> {
-    private Location<World> physicalLocation;
-    private Crate crate;
-    private int selectedSlot;
-    private Player player;
-    private ViewConfig config;
+    private final Location<World> physicalLocation;
+    private final Crate crate;
+    private final int selectedSlot;
+    private final Player player;
+    private final ViewConfig config;
 
-    public RouletteView(PhysicalCrate pcrate, Player player){
+    public RouletteView(PhysicalCrate pcrate, Player player) {
         this.crate = pcrate.getCrate();
         this.physicalLocation = pcrate.getLocation();
         this.config = crate.getViewConfig();
@@ -38,20 +39,20 @@ public class RouletteView implements Consumer<Page> {
         this.player = player;
         player.playSound(SoundTypes.ENTITY_FIREWORK_LAUNCH, player.getPosition(), 0.5);
         Page.PageBuilder builder =
-            Page.builder()
-                .setAutoPaging(false)
-                .setTitle(TextSerializers.FORMATTING_CODE.deserialize(crate.getName()))
-                .setUpdatable(true)
-                .setUpdater(this)
-                .setInterrupt(() -> {
-                    crate.getSlot(selectedSlot).rewardPlayer(player,this.physicalLocation);
-                    player.playSound(SoundTypes.ENTITY_EXPERIENCE_ORB_PICKUP, player.getLocation().getPosition(), 0.5);
-                })
-                .setInventoryDimension(InventoryDimension.of(3,3))
-                .setInventoryArchetype(InventoryArchetypes.DISPENSER);
+                Page.builder()
+                        .setAutoPaging(false)
+                        .setTitle(TextSerializers.FORMATTING_CODE.deserialize(crate.getName()))
+                        .setUpdatable(true)
+                        .setUpdater(this)
+                        .setInterrupt(() -> {
+                            crate.getSlot(selectedSlot).rewardPlayer(player, this.physicalLocation);
+                            player.playSound(SoundTypes.ENTITY_EXPERIENCE_ORB_PICKUP, player.getLocation().getPosition(), 0.5);
+                        })
+                        .setInventoryDimension(InventoryDimension.of(3, 3))
+                        .setInventoryArchetype(InventoryArchetypes.DISPENSER);
 
-        for(int i = 0; i < 3*3; i++){
-            builder.putElement(i,new Element((i == 4)? crate.getSlot(selectedSlot).getDisplayItem().toItemStack() : getConfetti()));
+        for (int i = 0; i < 3 * 3; i++) {
+            builder.putElement(i, new Element((i == 4) ? crate.getSlot(selectedSlot).getDisplayItem().toItemStack() : getConfetti()));
         }
         Page page = builder.build("meme");
         StateContainer sc = new StateContainer();
@@ -60,24 +61,24 @@ public class RouletteView implements Consumer<Page> {
     }
 
     private ItemStack getConfetti() {
-        DyeColor[] colors = {DyeColors.BLUE,DyeColors.CYAN,DyeColors.LIGHT_BLUE,DyeColors.LIME,DyeColors.MAGENTA,DyeColors.ORANGE,DyeColors.PINK,DyeColors.PURPLE,DyeColors.RED, DyeColors.YELLOW};
-        ItemStack g =ItemStack.builder()
+        DyeColor[] colors = {DyeColors.BLUE, DyeColors.CYAN, DyeColors.LIGHT_BLUE, DyeColors.LIME, DyeColors.MAGENTA, DyeColors.ORANGE, DyeColors.PINK, DyeColors.PURPLE, DyeColors.RED, DyeColors.YELLOW};
+        ItemStack g = ItemStack.builder()
                 .itemType(ItemTypes.STAINED_GLASS_PANE)
-                .add(Keys.DYE_COLOR,colors[(int)Math.floor(Math.random() * colors.length)])
+                .add(Keys.DYE_COLOR, colors[(int) Math.floor(Math.random() * colors.length)])
                 .build();
-        g.offer(Keys.DISPLAY_NAME, Text.of(TextStyles.RESET,"You win!"));
+        g.offer(Keys.DISPLAY_NAME, Text.of(TextStyles.RESET, "You win!"));
         return g;
     }
 
     @Override
     public void accept(Page page) {
         int count = 0;
-        for(Slot e : page.getPageView().<Slot>slots()){
-            if(count != 4 && page.getTicks() % 5 == 0)
+        for (Slot e : page.getPageView().<Slot>slots()) {
+            if (count != 4 && page.getTicks() % 5 == 0)
                 e.set(getConfetti());
-            count ++;
+            count++;
         }
-        if(page.getTicks() > 20*3){
+        if (page.getTicks() > 20 * 3) {
             page.getObserver().closeInventory();
         }
     }
